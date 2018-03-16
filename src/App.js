@@ -1,46 +1,69 @@
 import React, { Component } from 'react';
-import logo from './logo.svg';
 import './App.css';
 import Cats from './pages/Cats';
 import NewCat from './pages/NewCat'
-import {BrowserRouter as Router, Link, Route} from 'react-router-dom'
+import {BrowserRouter as Router, Link, Route, Redirect} from 'react-router-dom'
 import {
   Grid,
   PageHeader,
   Row,
-  Col,
-  Alert
+  Col
 } from 'react-bootstrap'
+
 
 class App extends Component {
   constructor(props){
       super(props)
       this.state = {
-        cats: [
-          {
-            id: 1,
-            name: 'Morris',
-            age: 2,
-            enjoys: "Long walks on the beach."
-          },
-          {
-            id: 2,
-            name: 'Paws',
-            age: 4,
-            enjoys: "Snuggling by the fire."
-          },
-          {
-            id: 3,
-            name: 'Mr. Meowsalot',
-            age: 12,
-            enjoys: "Being in charge."
-          }
-        ]
+        apiUrl: "http://localhost:3001",
+        cats: [],
+        newCatSuccess: false,
+        errors: null
       }
     }
-    newCatSubmit(cat){
-  console.log("This cat was submitted", cat)
+
+    componentWillMount(){
+  fetch(`${this.state.apiUrl}/cats`)
+  .then((rawResponse) =>{
+    return rawResponse.json()
+  })
+  .then((parsedResponse)=>{
+    this.setState({cats: parsedResponse})
+  })
 }
+
+    newCatSubmit(cat){
+      fetch(`${this.state.apiUrl}/cats`,
+      {
+        body: JSON.stringify(cat),
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        method: "POST"
+      }
+    )
+    .then((rawResponse) => {
+      // rawResponse.json()
+      return Promise.all([rawResponse.status, rawResponse.json()])
+    })
+    .then((parsedResponse) =>{
+      if(parsedResponse[0] === 422){
+        this.setState({errors: parsedResponse[1]})
+      }else{
+        const cats = Object.assign([], this.state.cats)
+        cats.push(parsedResponse[1])
+        this.setState({
+          cats: cats,
+          errors: null,
+          newCatSuccess: true
+        })
+      }
+    })
+  // console.log("This cat was submitted", cat)
+}
+
+
+
   render() {
     return (
       <Router>
@@ -62,7 +85,12 @@ class App extends Component {
                  </Col>
                </Row>
              </PageHeader>
-             <NewCat onSubmit={this.newCatSubmit.bind(this)}/>
+             <NewCat onSubmit={this.newCatSubmit.bind(this)}
+             errors={this.state.errors}
+             />
+             {this.state.newCatSuccess &&
+               <Redirect to="/cats" />
+             }
            </Grid>
          )} />
 
@@ -76,13 +104,20 @@ class App extends Component {
                  </Col>
                  <Col xs={4}>
                    <small>
-                     <Link to='/' id='cats-link'>Add a Cat</Link>
+                     <Link
+                       to='/'
+                       id='cats-link'
+                       onClick={()=>{this.setState({newCatSuccess: false})}}
+                     >Add a Cat</Link>
                    </small>
                  </Col>
                </Row>
              </PageHeader>
              <Cats cats={this.state.cats} />
-          </Grid>
+             {!this.state.newCatSuccess &&
+              <Redirect to="/cats" />
+            }
+           </Grid>
          )} />
        </div>
      </Router>

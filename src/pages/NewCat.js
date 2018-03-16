@@ -21,7 +21,7 @@ class NewCat extends Component {
       }
     }
   }
-
+  
   handleSubmit(){
     this.props.onSubmit(this.state.form)
   }
